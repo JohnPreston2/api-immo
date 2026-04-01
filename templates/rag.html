@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API IMMO — Assistant IA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0d0f14;
+    --panel:     #141720;
+    --border:    #252a3a;
+    --accent:    #c8ff00;
+    --accent2:   #ff6b2b;
+    --accent3:   #00d4ff;
+    --text:      #f0f2f8;
+    --text2:     #c8cdd8;
+    --muted:     #7a8494;
+    --red:       #ff4f4f;
+    --green:     #00e87a;
+    --font-mono: 'Space Mono', monospace;
+    --font-ui:   'Syne', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-ui); min-height: 100vh; position: relative; overflow-x: hidden; }
+  body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(200,255,0,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(200,255,0,.03) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; z-index: 0; }
+
+  /* ── HEADER ── */
+  header { position: relative; z-index: 10; display: flex; align-items: center; justify-content: space-between; padding: 18px 32px; border-bottom: 1px solid var(--border); background: rgba(10,12,15,.9); backdrop-filter: blur(10px); }
+  .logo { display: flex; align-items: center; gap: 14px; text-decoration: none; }
+  .logo-icon { width: 36px; height: 36px; background: var(--accent); clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); }
+  .logo h1 { font-size: 1.1rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+  .logo p { font-family: var(--font-mono); font-size: .65rem; color: var(--text2); letter-spacing: .06em; }
+  .back-btn { font-family: var(--font-mono); font-size: .65rem; color: var(--muted); text-decoration: none; padding: 8px 14px; border: 1px solid var(--border); border-radius: 4px; transition: all .2s; display: flex; align-items: center; gap: 8px; }
+  .back-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+  /* ── HERO ── */
+  .hero { position: relative; z-index: 10; padding: 48px 32px 32px; border-bottom: 1px solid var(--border); }
+  .hero-tag { font-family: var(--font-mono); font-size: .6rem; letter-spacing: .15em; text-transform: uppercase; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .hero-tag::before { content: ''; display: block; width: 24px; height: 1px; background: var(--accent); }
+  .hero h2 { font-size: 2.2rem; font-weight: 800; line-height: 1.1; margin-bottom: 10px; }
+  .hero h2 span { color: var(--accent); }
+  .hero p { font-family: var(--font-mono); font-size: .75rem; color: var(--muted); max-width: 560px; line-height: 1.7; }
+
+  /* ── QUERY ZONE ── */
+  .query-zone { position: relative; z-index: 10; padding: 32px; }
+  .query-label { font-family: var(--font-mono); font-size: .6rem; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+  .query-input-row { display: flex; gap: 10px; align-items: stretch; }
+  .query-wrap { position: relative; flex: 1; }
+  .query-wrap::before { content: '>>'; position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-family: var(--font-mono); color: var(--accent); font-size: .8rem; pointer-events: none; }
+  #query-input {
+    width: 100%; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 4px; padding: 14px 16px 14px 42px;
+    font-family: var(--font-mono); font-size: .9rem; color: var(--text);
+    outline: none; transition: border-color .2s;
+  }
+  #query-input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(200,255,0,.1); }
+  #query-input::placeholder { color: var(--muted); }
+  .send-btn {
+    padding: 14px 28px; background: var(--accent); color: #0a0c0f;
+    border: none; border-radius: 4px; font-family: var(--font-ui);
+    font-size: .85rem; font-weight: 800; letter-spacing: .08em;
+    text-transform: uppercase; cursor: pointer; transition: all .2s;
+    display: flex; align-items: center; gap: 8px; white-space: nowrap;
+  }
+  .send-btn:hover { background: #deff33; transform: translateY(-1px); }
+  .send-btn:disabled { background: var(--border); color: var(--muted); cursor: not-allowed; transform: none; }
+
+  /* SUGGESTIONS */
+  .suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .sug {
+    font-family: var(--font-mono); font-size: .62rem; padding: 6px 12px;
+    border: 1px solid var(--border); border-radius: 20px; color: var(--text2);
+    cursor: pointer; transition: all .2s; background: transparent;
+  }
+  .sug:hover { border-color: var(--accent); color: var(--accent); background: rgba(200,255,0,.05); }
+
+  /* ── RESPONSE ZONE ── */
+  .response-zone { position: relative; z-index: 10; padding: 0 32px 32px; }
+
+  /* Sources */
+  .sources-bar {
+    display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
+    padding: 12px 16px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 6px; align-items: center;
+  }
+  .sources-label { font-family: var(--font-mono); font-size: .58rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-right: 4px; white-space: nowrap; }
+  .source-chip {
+    font-family: var(--font-mono); font-size: .62rem; padding: 3px 10px;
+    border-radius: 3px; background: rgba(0,212,255,.08);
+    border: 1px solid rgba(0,212,255,.2); color: var(--accent3);
+    display: flex; align-items: center; gap: 5px;
+  }
+  .source-score { color: var(--muted); font-size: .55rem; }
+
+  /* Response panel */
+  .response-panel {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 6px;
+    overflow: hidden;
+  }
+  .response-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .response-header-left { display: flex; align-items: center; gap: 10px; }
+  .ai-badge {
+    font-family: var(--font-mono); font-size: .58rem; letter-spacing: .1em;
+    text-transform: uppercase; padding: 3px 8px; border-radius: 3px;
+    background: rgba(200,255,0,.1); border: 1px solid rgba(200,255,0,.3);
+    color: var(--accent);
+  }
+  .model-tag { font-family: var(--font-mono); font-size: .58rem; color: var(--muted); }
+  .timing { font-family: var(--font-mono); font-size: .58rem; color: var(--muted); }
+
+  #response-body {
+    padding: 24px; font-family: var(--font-mono); font-size: .8rem;
+    line-height: 1.9; color: var(--text2); min-height: 120px;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  #response-body.empty { color: var(--muted); font-style: italic; }
+
+  /* Cursor blink */
+  .cursor { display: inline-block; width: 8px; height: 14px; background: var(--accent); margin-left: 2px; animation: blink .7s infinite; vertical-align: middle; }
+  @keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+
+  /* Loader */
+  .loader-bar {
+    height: 2px; background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    background-size: 200% 100%; animation: shimmer 1.2s infinite; display: none;
+  }
+  .loader-bar.show { display: block; }
+  @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+  /* Error */
+  .err-msg { font-family: var(--font-mono); font-size: .72rem; color: var(--red); padding: 12px 16px; background: rgba(255,79,79,.08); border: 1px solid rgba(255,79,79,.2); border-radius: 4px; margin-bottom: 16px; display: none; }
+  .err-msg.show { display: block; }
+
+  /* ── HISTORY ── */
+  .history-section { position: relative; z-index: 10; padding: 0 32px 48px; }
+  .section-title { font-family: var(--font-mono); font-size: .6rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .history-list { display: flex; flex-direction: column; gap: 8px; }
+  .history-item {
+    padding: 12px 16px; background: var(--panel); border: 1px solid var(--border);
+    border-radius: 4px; cursor: pointer; transition: all .2s;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .history-item:hover { border-color: var(--accent); background: rgba(200,255,0,.03); }
+  .history-q { font-family: var(--font-mono); font-size: .72rem; color: var(--text2); }
+  .history-meta { font-family: var(--font-mono); font-size: .58rem; color: var(--muted); white-space: nowrap; margin-left: 16px; }
+
+  /* ── STATUS BAR ── */
+  .status-bar-bottom {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+    padding: 8px 32px; background: rgba(10,12,15,.95); border-top: 1px solid var(--border);
+    display: flex; gap: 20px; align-items: center; backdrop-filter: blur(10px);
+  }
+  .status-item { display: flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: .6rem; color: var(--muted); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+  .dot.live { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
+  .dot.warn { background: var(--accent2); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+
+  /* Spacer for fixed bar */
+  .bottom-spacer { height: 48px; }
+
+  /* Markdown-like formatting in response */
+  #response-body strong { color: var(--accent); font-weight: 700; }
+  #response-body em { color: var(--accent3); font-style: italic; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <a href="/" class="logo" style="text-decoration:none">
+    <div class="logo-icon"></div>
+    <div>
+      <h1>API IMMO</h1>
+      <p>OBSERVATOIRE FONCIER</p>
+    </div>
+  </a>
+  <a href="/" class="back-btn">← Dashboard</a>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-tag">Assistant IA</div>
+  <h2>Interrogez les données<br><span>en langage naturel</span></h2>
+  <p>Powered by qwen4b-64k · RAG sur 25 291 communes françaises · DVF 2022–2025</p>
+</div>
+
+<!-- QUERY -->
+<div class="query-zone">
+  <div class="query-label">Votre question</div>
+  <div class="query-input-row">
+    <div class="query-wrap">
+      <input id="query-input" type="text"
+        placeholder="Ex : prix appartement Marseille 2024, tendance Lyon vs Bordeaux..."
+        autocomplete="off"
+      />
+    </div>
+    <button class="send-btn" id="send-btn" onclick="sendQuery()">
+      <span id="btn-label">Analyser</span>
+    </button>
+  </div>
+  <div class="suggestions">
+    <button class="sug" onclick="setQuery(this)">prix appartement Marseille 2024</button>
+    <button class="sug" onclick="setQuery(this)">comparer Lyon et Bordeaux rentabilité</button>
+    <button class="sug" onclick="setQuery(this)">communes département 13 sous 2500€ en croissance</button>
+    <button class="sug" onclick="setQuery(this)">meilleur mois pour acheter à Toulouse</button>
+    <button class="sug" onclick="setQuery(this)">opportunités investissement Paris petite ceinture</button>
+    <button class="sug" onclick="setQuery(this)">évolution prix maisons Nantes 2022 2024</button>
+  </div>
+</div>
+
+<!-- RESPONSE -->
+<div class="response-zone">
+  <div class="err-msg" id="err-msg"></div>
+
+  <!-- Sources -->
+  <div class="sources-bar" id="sources-bar" style="display:none">
+    <span class="sources-label">Sources</span>
+    <div id="sources-chips"></div>
+  </div>
+
+  <!-- Panel -->
+  <div class="response-panel">
+    <div class="loader-bar" id="loader-bar"></div>
+    <div class="response-header">
+      <div class="response-header-left">
+        <span class="ai-badge">qwen4b-64k</span>
+        <span class="model-tag" id="model-info">RAG · nomic-embed · ChromaDB</span>
+      </div>
+      <span class="timing" id="timing-info"></span>
+    </div>
+    <div id="response-body" class="empty">
+      Posez une question sur le marché immobilier français...
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="history-section" id="history-section" style="display:none">
+  <div class="section-title">Historique de session</div>
+  <div class="history-list" id="history-list"></div>
+</div>
+
+<div class="bottom-spacer"></div>
+
+<!-- STATUS BAR -->
+<div class="status-bar-bottom">
+  <div class="status-item">
+    <div class="dot live" id="dot-api"></div>
+    <span id="status-api">API connectée</span>
+  </div>
+  <div class="status-item">
+    <div class="dot" id="dot-index"></div>
+    <span id="status-index">Vérification index...</span>
+  </div>
+  <div class="status-item">
+    <div class="dot live"></div>
+    <span id="status-communes">— communes indexées</span>
+  </div>
+</div>
+
+<script>
+const BASE = 'http://localhost:5001';
+const history_log = [];
+let isLoading = false;
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+async function checkStatus() {
+  try {
+    const r = await fetch(`${BASE}/api/rag/status`);
+    const d = await r.json();
+    const nb = d.nb_communes || 0;
+    document.getElementById('dot-index').className = 'dot ' + (nb > 0 ? 'live' : 'warn');
+    document.getElementById('status-index').textContent = nb > 0 ? `Index RAG prêt` : 'Index RAG manquant';
+    document.getElementById('status-communes').textContent = `${nb.toLocaleString('fr')} communes indexées`;
+  } catch(e) {
+    document.getElementById('dot-api').className = 'dot warn';
+    document.getElementById('status-api').textContent = 'API hors ligne';
+    document.getElementById('status-index').textContent = 'app.py non démarré';
+  }
+}
+
+// ── SEND QUERY ────────────────────────────────────────────────────────────
+function setQuery(btn) {
+  document.getElementById('query-input').value = btn.textContent;
+  document.getElementById('query-input').focus();
+}
+
+async function sendQuery() {
+  if (isLoading) return;
+  const query = document.getElementById('query-input').value.trim();
+  if (!query) return;
+
+  isLoading = true;
+  const btn = document.getElementById('send-btn');
+  const loader = document.getElementById('loader-bar');
+  const body = document.getElementById('response-body');
+  const err = document.getElementById('err-msg');
+  const sourcesBar = document.getElementById('sources-bar');
+
+  // Reset UI
+  btn.disabled = true;
+  document.getElementById('btn-label').textContent = 'Analyse...';
+  loader.classList.add('show');
+  err.classList.remove('show');
+  body.className = '';
+  body.innerHTML = '<span class="cursor"></span>';
+  sourcesBar.style.display = 'none';
+  document.getElementById('timing-info').textContent = '';
+
+  const t0 = Date.now();
+
+  try {
+    const r = await fetch(`${BASE}/api/rag?q=${encodeURIComponent(query)}&stream=1`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let responseText = '';
+    let metaReceived = false;
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const payload = JSON.parse(line.slice(6));
+
+          if (payload.type === 'meta' && !metaReceived) {
+            metaReceived = true;
+            renderSources(payload.sources || []);
+            sourcesBar.style.display = 'flex';
+          }
+
+          else if (payload.type === 'token') {
+            responseText += payload.text;
+            body.innerHTML = renderMarkdown(responseText) + '<span class="cursor"></span>';
+            // Auto scroll
+            body.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+
+          else if (payload.type === 'done') {
+            body.innerHTML = renderMarkdown(responseText);
+            const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+            document.getElementById('timing-info').textContent = `${elapsed}s`;
+            addToHistory(query, responseText, elapsed);
+          }
+
+          else if (payload.error) {
+            throw new Error(payload.error);
+          }
+        } catch(parseErr) {
+          // Ignorer les lignes non-JSON
+        }
+      }
+    }
+
+  } catch(e) {
+    err.textContent = 'Erreur : ' + e.message;
+    err.classList.add('show');
+    body.innerHTML = '';
+    body.className = 'empty';
+  } finally {
+    isLoading = false;
+    btn.disabled = false;
+    document.getElementById('btn-label').textContent = 'Analyser';
+    loader.classList.remove('show');
+  }
+}
+
+// ── RENDER SOURCES ────────────────────────────────────────────────────────
+function renderSources(sources) {
+  const chips = document.getElementById('sources-chips');
+  chips.innerHTML = sources.map(s =>
+    `<div class="source-chip">
+      ${s.commune}
+      <span class="source-score">${(s.score * 100).toFixed(0)}%</span>
+    </div>`
+  ).join('');
+}
+
+// ── SIMPLE MARKDOWN ───────────────────────────────────────────────────────
+function renderMarkdown(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, `<code style="background:var(--border);padding:2px 6px;border-radius:3px;font-size:.75rem">$1</code>`)
+    .replace(/^#{1,3}\s+(.+)$/gm, `<span style="color:var(--accent);font-weight:700;font-size:.85rem">$1</span>`)
+    .replace(/^[-*]\s+(.+)$/gm, `<span style="padding-left:12px;display:block">▸ $1</span>`)
+    .replace(/\n/g, '\n');
+}
+
+// ── HISTORY ───────────────────────────────────────────────────────────────
+function addToHistory(query, response, elapsed) {
+  history_log.unshift({ query, response, elapsed, ts: new Date().toLocaleTimeString('fr') });
+  renderHistory();
+}
+
+function renderHistory() {
+  if (!history_log.length) return;
+  const section = document.getElementById('history-section');
+  const list = document.getElementById('history-list');
+  section.style.display = 'block';
+  list.innerHTML = history_log.map((h, i) =>
+    `<div class="history-item" onclick="replayHistory(${i})">
+      <span class="history-q">▸ ${h.query}</span>
+      <span class="history-meta">${h.ts} · ${h.elapsed}s</span>
+    </div>`
+  ).join('');
+}
+
+function replayHistory(i) {
+  const h = history_log[i];
+  document.getElementById('query-input').value = h.query;
+  document.getElementById('response-body').innerHTML = renderMarkdown(h.response);
+  document.getElementById('response-body').className = '';
+  document.getElementById('timing-info').textContent = h.elapsed + 's';
+  renderSources([]);
+  document.getElementById('sources-bar').style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── KEYBOARD ──────────────────────────────────────────────────────────────
+document.getElementById('query-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendQuery();
+  }
+});
+
+// ── BOOT ──────────────────────────────────────────────────────────────────
+checkStatus();
+</script>
+</body>
+</html>
